@@ -2,12 +2,11 @@ const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../../models/User'); 
-const googleCredentials = require('../OAuth.json'); 
 
 passport.use(new GoogleStrategy({
-    clientID: googleCredentials.web.client_id,
-    clientSecret: googleCredentials.web.client_secret,
-    callbackURL: "http://localhost:8080/auth/google/callback"
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:8080/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
