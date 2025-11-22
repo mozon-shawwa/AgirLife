@@ -145,10 +145,9 @@ const uploadBlogImage = async (req, res, next) => {
 
 const addComment = async (req, res, next) => {
   try {
-    const { comment, name, email } = req.body;
-    const blogId = req.params.id;
+     const { blog: blogId, comment, name, email } = req.body;
 
-    if (!comment || !name || !email) {
+    if (!comment || !name || !email || !blogId) {
       return next(createError(400, 'All fields are required.'));
     }
 
@@ -157,7 +156,7 @@ const addComment = async (req, res, next) => {
       return next(createError(404, 'Blog post not found.'));
     }
 
-    blog.comments.push({ comment, name, email });
+    blog.comments.unshift({ comment, name, email });
     await blog.save();
 
     returnJson(res, 201, true, blog.comments, 'Comment added successfully.');
