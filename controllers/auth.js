@@ -9,18 +9,30 @@ const nodemailer = require('nodemailer');
 
 const register = async (req, res, next) => {
   try {
-    const { userName, email, password, phone, location} = req.body;
+    const { userName, email, password, phone, location } = req.body;
+
     if (!userName || !email || !password || !phone || !location) {
-      return next(createError(400, 'please,provide all fields'));
+      return next(createError(400, 'Please provide all required fields.'));
     }
 
-    const exisiting = await User.findOne({ email });
-    if (exisiting) {
-      return next(createError(400, 'Email is already Registered,please login'));
+    if (!/^\d{10}$/.test(phone)) {
+      return next(createError(400, 'Phone number must be 10 digits.'));
+    }
+
+    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+
+    if (existingUser) {
+      if (existingUser.email === email) {
+        return next(createError(400, 'This email is already registered. Please log in.'));
+      }
+      if (existingUser.phone === phone) {
+        return next(createError(400, 'This phone number is already registered.'));
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+
 
     const user = await User.create({
       userName,
@@ -30,45 +42,51 @@ const register = async (req, res, next) => {
       location
     });
 
+    user.password = undefined;
+
     returnJson(res, 201, true, user, 'Successfully Registered');
 
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      const message = Object.values(error.errors).map(val => val.message)[0];
+      return next(createError(400, message));
+    }
     console.log(error);
     return next(createError(500, 'Error In Register API'));
   }
-
 };
+
 
 const login = async (req, res, next) => {
   try {
     const { key, password } = req.body;
     if (!key) {
-     return next(createError(400, 'Please provide email or phone.'));
+      return next(createError(400, 'Please provide email or phone.'));
     }
 
-    const user = await User.findOne({$or:[{email:key},{phone:key}]});
-    if(!user){
+    const user = await User.findOne({ $or: [{ email: key }, { phone: key }] });
+    if (!user) {
       return next(createError(404, 'User Not Found'));
     }
 
     if (!user.password) {
-       const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-       return returnJson(res, 200, true, { user, token }, "Login Successfully via Google");
+      const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+      return returnJson(res, 200, true, { user, token }, "Login Successfully via Google");
     }
 
     if (!password) {
       return next(createError(400, 'Please provide password.'));
     }
 
-    const isMatch = await bcrypt.compare(password,user.password);
-    if(!isMatch){
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return next(createError(400, 'Invalid Password'));
     }
 
-    const token = JWT.sign({id:user._id},process.env.JWT_SECRET,{expiresIn:"7d"});
+    const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
     user.password = undefined;
 
-    returnJson(res,200,true,{user,token},"Login Successfully");
+    returnJson(res, 200, true, { user, token }, "Login Successfully");
 
   } catch (error) {
     console.log(error);
@@ -93,16 +111,16 @@ const forgotPassword = async (req, res, next) => {
     const token = crypto.randomBytes(32).toString('hex');
 
     user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000; 
+    user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
 
     const resetLink = `http://localhost:8080/reset-password/${token}`;
 
     const transporter = nodemailer.createTransport({
-       host: "smtp.gmail.com",
-       port: 587,
-       secure: false,
-       auth: {
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       }
@@ -117,7 +135,7 @@ const forgotPassword = async (req, res, next) => {
 
     await transporter.sendMail(mailOptions);
 
-    returnJson(res, 200, true,{} , "Reset password link sent to your email");
+    returnJson(res, 200, true, {}, "Reset password link sent to your email");
 
   } catch (err) {
     console.log(err);
@@ -135,7 +153,7 @@ const resetPassword = async (req, res, next) => {
 
     const user = await User.findOne({
       resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() } 
+      resetPasswordExpires: { $gt: Date.now() }
     });
 
     if (!user) {
@@ -158,4 +176,4 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login ,forgotPassword ,resetPassword};
+module.exports = { register, login, forgotPassword, resetPassword };
