@@ -114,7 +114,7 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
 
-    const resetLink = `http://localhost:8080/reset-password/${token}`;
+    const resetLink =`https://agirlife.onrender.com/resetpassword.html?token=${token}`;
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -130,7 +130,7 @@ const forgotPassword = async (req, res, next) => {
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: 'Reset Password',
-      text: `Hi ${user.name}, click this link to reset your password: ${resetLink}`
+      text: `Hi ${user.userName}, click this link to reset your password: ${resetLink}`
     };
 
     await transporter.sendMail(mailOptions);
