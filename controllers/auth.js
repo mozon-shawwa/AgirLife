@@ -108,35 +108,43 @@ const forgotPassword = async (req, res, next) => {
       return next(createError(404, "User not found"));
     }
 
-    const token = crypto.randomBytes(32).toString('hex');
-
+    const token = crypto.randomBytes(32).toString("hex");
     user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000;
+    user.resetPasswordExpires = Date.now() + 3600000; 
     await user.save();
 
-    const resetLink =`https://agirlife.onrender.com/resetpassword.html?token=${token}`;
+    const resetLink = `https://agirlife.onrender.com/resetpassword.html?token=${token}`;
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: "Reset Password",
+        text: `Hi ${user.userName}, click this link to reset your password: ${resetLink}`
+      };
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: 'Reset Password',
-      text: `Hi ${user.userName}, click this link to reset your password: ${resetLink}`
-    };
+      await transporter.sendMail(mailOptions);
 
-    await transporter.sendMail(mailOptions);
-
-    returnJson(res, 200, true, {}, "Reset password link sent to your email");
-
+      returnJson(res, 200, true, {}, "Reset password link sent to your email");
+    } else {
+      console.log(`Reset link for ${user.email}: ${resetLink}`);
+      returnJson(
+        res,
+        200,
+        true,
+        { resetLink }, 
+        "Reset password link generated (check console or response)"
+      );
+    }
   } catch (err) {
     console.log(err);
     return next(createError(500, "Error in forgot password"));
@@ -169,11 +177,11 @@ const resetPassword = async (req, res, next) => {
     await user.save();
 
     returnJson(res, 200, true, {}, "Password has been successfully reset");
-
   } catch (err) {
     console.log(err);
     return next(createError(500, "Error in resetting password"));
   }
 };
+
 
 module.exports = { register, login, forgotPassword, resetPassword };
