@@ -4,8 +4,7 @@ const JWT = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { returnJson } = require('../my-modules/json-response');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
-
+const sgMail = require('@sendgrid/mail');
 
 const register = async (req, res, next) => {
   try {
@@ -105,43 +104,47 @@ const forgotPassword = async (req, res, next) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return next(createError(404, "User not found"));
+      return returnJson(res, 200, true, {}, "If an account with this email exists, a reset link has been sent.");
     }
 
     const token = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000;
-    await user.save();
+    await User.findByIdAndUpdate(user._id, {
+      resetPasswordToken: token,
+      resetPasswordExpires: Date.now() + 3600000, 
+    });
 
     const resetLink = `https://agirlife-frontend.onrender.com/resetpassword.html?token=${token}`;
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 587,
-        secure: false,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        }
-      });
 
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: user.email,
-        subject: "Reset Password",
-        text: `Hi ${user.userName}, click this link to reset your password: ${resetLink}`
-      };
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-      await transporter.sendMail(mailOptions);
+    const msg = {
+      to: user.email,
+      from: process.env.EMAIL_USER, 
+      subject: 'AgriLife - Reset Your Password',
+      text: `Hi ${user.userName},\n\nPlease click the following link to reset your password: ${resetLink}\n\nIf you did not request this, please ignore this email.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2>Password Reset Request</h2>
+          <p>Hi ${user.userName},</p>
+          <p>We received a request to reset your password for your AgriLife account. Please click the button below to set a new password:</p>
+          <a href="${resetLink}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+          <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+          <p>Thanks,  
+The AgriLife Team</p>
+        </div>
+      `,
+    };
 
-      returnJson(res, 200, true, {}, "Reset password link sent to your email");
-    } else {
-      console.log(`Reset link for ${user.email}: ${resetLink}`);
-      returnJson( res, 200, true, { resetLink }, "Reset password link generated" );
-    }
+    await sgMail.send(msg);
+
+    return returnJson(res, 200, true, {}, "If an account with this email exists, a reset link has been sent.");
+
   } catch (err) {
-    console.log(err);
-    return next(createError(500, "Error in forgot password"));
+    console.error("Error in forgotPassword controller:", err);
+    if (err.response) {
+      console.error("SendGrid Error Body:", err.response.body);
+    }
+    return next(createError(500, "An internal error occurred. Please try again later."));
   }
 };
 
