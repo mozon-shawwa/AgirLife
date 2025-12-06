@@ -103,39 +103,37 @@ const forgotPassword = async (req, res, next) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user) {
-      return returnJson(res, 200, true, {}, "If an account with this email exists, a reset link has been sent.");
-    }
+    if (user) {
+      const token = crypto.randomBytes(32).toString("hex");
+      await User.findByIdAndUpdate(user._id, {
+        resetPasswordToken: token,
+        resetPasswordExpires: Date.now() + 3600000,
+      });
 
-    const token = crypto.randomBytes(32).toString("hex");
-    await User.findByIdAndUpdate(user._id, {
-      resetPasswordToken: token,
-      resetPasswordExpires: Date.now() + 3600000, 
-    });
+      const resetLink = `https://agirlife-frontend.onrender.com/resetpassword.html?token=${token}`;
 
-    const resetLink = `https://agirlife-frontend.onrender.com/resetpassword.html?token=${token}`;
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-    const msg = {
-      to: user.email,
-      from: process.env.EMAIL_USER, 
-      subject: 'AgriLife - Reset Your Password',
-      text: `Hi ${user.userName},\n\nPlease click the following link to reset your password: ${resetLink}\n\nIf you did not request this, please ignore this email.`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Password Reset Request</h2>
-          <p>Hi ${user.userName},</p>
-          <p>We received a request to reset your password for your AgriLife account. Please click the button below to set a new password:</p>
-          <a href="${resetLink}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
-          <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
-          <p>Thanks,  
+      const msg = {
+        to: user.email,
+        from: process.env.EMAIL_USER,
+        subject: 'AgriLife - Reset Your Password',
+        text: `Hi ${user.userName},\n\nPlease click the following link to reset your password: ${resetLink}\n\nIf you did not request this, please ignore this email.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Password Reset Request</h2>
+            <p>Hi ${user.userName},</p>
+            <p>We received a request to reset your password for your AgriLife account. Please click the button below to set a new password:</p>
+            <a href="${resetLink}" style="background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+            <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+            <p>Thanks,  
 The AgriLife Team</p>
-        </div>
-      `,
-    };
+          </div>
+        `,
+      };
 
-    await sgMail.send(msg);
+      await sgMail.send(msg);
+    }
 
     return returnJson(res, 200, true, {}, "If an account with this email exists, a reset link has been sent.");
 
@@ -156,6 +154,10 @@ const resetPassword = async (req, res, next) => {
       return next(createError(400, "Token and new password are required"));
     }
 
+    if (newPassword.length < 8) {
+      return next(createError(400, "Password must be at least 8 characters long"));
+    }
+
     const user = await User.findOne({
       resetPasswordToken: token,
       resetPasswordExpires: { $gt: Date.now() }
@@ -173,11 +175,12 @@ const resetPassword = async (req, res, next) => {
 
     await user.save();
 
-    returnJson(res, 200, true, {}, "Password has been successfully reset");
+    return returnJson(res, 200, true, {}, "Password has been successfully reset");
   } catch (err) {
     console.log(err);
     return next(createError(500, "Error in resetting password"));
   }
+
 };
 
 
