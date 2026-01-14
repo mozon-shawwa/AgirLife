@@ -71,11 +71,11 @@ The API supports **authentication, e-commerce operations, online payments, conte
 
 ## ⚙️ Installation & Setup
 
-### Clone the repository
-```bash
-git clone https://github.com/mozon-shawwa/AgirLife.git
-cd AgirLife
-```  
+1. **Clone the repository:**
+    ```bash
+    git clone https://github.com/mozon-shawwa/AgirLife.git
+    cd AgirLife
+    ```  
 2. **Install dependencies:**
     ```bash
     npm install
