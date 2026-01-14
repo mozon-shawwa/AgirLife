@@ -1,8 +1,8 @@
 # 🌿 AgirLife API
 
-**AgirLife** is a RESTful API built with **Node.js**, **Express**, and **MongoDB** designed for managing an agricultural supplies platform.  
-It supports user authentication, product management, shopping carts, orders, payments, blogs, stories, and contact messages.
+**AgirLife API** is a scalable **RESTful backend system** built with **Node.js, Express, and MongoDB**, designed to power an agricultural supplies platform that connects users with products, services, and content in an organized and secure way.
 
+The API supports **authentication, e-commerce operations, online payments, content management**, and more.
 ---
 
 ## 🚀 Features
@@ -44,7 +44,7 @@ It supports user authentication, product management, shopping carts, orders, pay
 
 - **Node.js** + **Express.js** – API and routing  
 - **MongoDB** + **Mongoose** – Database  
-- **JWT** – Authentication  
+- **JWT** – Authentication & Authorization 
 - **Passport.js (Google OAuth)** – Social login  
 - **Cloudinary** – Image storage  
 - **Stripe** – Online payment integration  
