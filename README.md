@@ -103,4 +103,3 @@ cd AgirLife
 
 The API is deployed on **Render**:  
 👉 [https://agirlife-api.onrender.com](https://agirlife-api.onrender.com)
-
